@@ -3,7 +3,7 @@ import { parse } from 'csv-parse/sync';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchItemBySku } from './api.js';
-import { writeChangeReport } from './report.js';
+import { writeChangeReport, writeMissingReport } from './report.js';
 import { loadPrices, savePrices } from './storage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -43,19 +43,31 @@ export async function checkPrices() {
 
   const store = await loadPrices();
   const changes = [];
+  const missing = [];
   const failures = [];
   let unchanged = 0;
   let baselined = 0;
 
-  for (const sku of skus) {
+  for (let i = 0; i < skus.length; i++) {
+    const sku = skus[i];
     const result = await fetchItemBySku(sku);
 
     if (!result.ok) {
-      console.error(`[FAIL] ${sku}: ${result.status} ${result.message}`);
-      failures.push({ sku, status: result.status, message: result.message });
-
       if (result.status === 401 || result.status === 403) {
         throw new Error(`Authentication failed (${result.status}): check WSD_API_TOKEN`);
+      }
+
+      if (result.notFound) {
+        console.warn(`[${i + 1}/${skus.length}] [MISSING] ${sku}: ${result.message}`);
+        missing.push({
+          sku,
+          status: result.status,
+          message: result.message || 'Unable to find item matching provided',
+          checkedAt: checkedAt.toISOString(),
+        });
+      } else {
+        console.error(`[${i + 1}/${skus.length}] [FAIL] ${sku}: ${result.status} ${result.message}`);
+        failures.push({ sku, status: result.status, message: result.message });
       }
       continue;
     }
@@ -72,12 +84,13 @@ export async function checkPrices() {
         updatedAt: checkedAt.toISOString(),
       };
       baselined++;
-      console.log(`[BASELINE] ${sku}: ${price}`);
+      console.log(`[${i + 1}/${skus.length}] [BASELINE] ${sku}: ${price}`);
       continue;
     }
 
     if (previous.price === price) {
       unchanged++;
+      console.log(`[${i + 1}/${skus.length}] [UNCHANGED] ${sku}: ${price}`);
       continue;
     }
 
@@ -101,7 +114,7 @@ export async function checkPrices() {
       updatedAt: checkedAt.toISOString(),
     };
 
-    console.log(`[CHANGED] ${sku}: ${previous.price} → ${price}`);
+    console.log(`[${i + 1}/${skus.length}] [CHANGED] ${sku}: ${previous.price} → ${price}`);
   }
 
   store.lastCheckedAt = checkedAt.toISOString();
@@ -112,13 +125,21 @@ export async function checkPrices() {
     reportPath = await writeChangeReport(changes, checkedAt);
   }
 
+  let missingReportPath = null;
+  if (missing.length > 0) {
+    missingReportPath = await writeMissingReport(missing, checkedAt);
+  }
+
   return {
     total: skus.length,
     unchanged,
     baselined,
     changed: changes.length,
+    missing: missing.length,
     failed: failures.length,
     reportPath,
+    missingReportPath,
     failures,
+    missingItems: missing,
   };
 }

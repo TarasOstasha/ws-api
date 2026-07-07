@@ -1,14 +1,14 @@
-import { writeToPath } from '@fast-csv/format';
-import { mkdir, readdir } from 'node:fs/promises';
+import { writeToString } from '@fast-csv/format';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPORTS_DIR = join(__dirname, '../reports');
 
-async function resolveReportPath(checkedAt) {
+async function resolveReportPath(checkedAt, reportPrefix) {
   const date = checkedAt.toISOString().slice(0, 10);
-  const baseName = `price-changes-${date}`;
+  const baseName = `${reportPrefix}-${date}`;
   const basePath = join(REPORTS_DIR, `${baseName}.csv`);
 
   try {
@@ -40,8 +40,13 @@ async function resolveReportPath(checkedAt) {
   return join(REPORTS_DIR, `${baseName}-${maxSeq + 1}.csv`);
 }
 
+async function writeCsvReport(reportPath, rows) {
+  const csv = await writeToString(rows, { headers: true, writeHeaders: true });
+  await writeFile(reportPath, csv, 'utf8');
+}
+
 export async function writeChangeReport(changes, checkedAt) {
-  const reportPath = await resolveReportPath(checkedAt);
+  const reportPath = await resolveReportPath(checkedAt, 'price-changes');
 
   const rows = changes.map((c) => ({
     sku: c.sku,
@@ -54,10 +59,23 @@ export async function writeChangeReport(changes, checkedAt) {
   }));
 
   await mkdir(REPORTS_DIR, { recursive: true });
-  await writeToPath(reportPath, rows, {
-    headers: true,
-    writeHeaders: true,
-  });
+  await writeCsvReport(reportPath, rows);
+
+  return reportPath;
+}
+
+export async function writeMissingReport(missing, checkedAt) {
+  const reportPath = await resolveReportPath(checkedAt, 'missing-items');
+
+  const rows = missing.map((m) => ({
+    sku: m.sku,
+    status: m.status,
+    message: m.message,
+    checkedAt: m.checkedAt,
+  }));
+
+  await mkdir(REPORTS_DIR, { recursive: true });
+  await writeCsvReport(reportPath, rows);
 
   return reportPath;
 }

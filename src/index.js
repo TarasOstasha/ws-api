@@ -13,17 +13,22 @@ async function main() {
     const parts = [`${result.unchanged} unchanged`];
     if (result.baselined > 0) parts.push(`${result.baselined} baselined`);
     if (result.changed > 0) parts.push(`${result.changed} changed`);
+    if (result.missing > 0) parts.push(`${result.missing} missing`);
     if (result.failed > 0) parts.push(`${result.failed} failed`);
 
     console.log(`\nChecked ${result.total} SKUs: ${parts.join(', ')}`);
 
     if (result.reportPath) {
-      console.log(`Report: ${result.reportPath}`);
+      console.log(`Price change report: ${result.reportPath}`);
     } else if (result.changed === 0) {
-      console.log('No price changes detected — no report generated.');
+      console.log('No price changes detected — no price change report generated.');
     }
 
-    process.exit(result.failed > 0 ? 1 : 0);
+    if (result.missingReportPath) {
+      console.log(`Missing items report: ${result.missingReportPath}`);
+    }
+
+    process.exit(result.failed > 0 || result.missing > 0 ? 1 : 0);
   } catch (err) {
     if (err.code === 'ENOENT' && err.path?.includes('skus.csv')) {
       console.error('Error: skus.csv not found. Add your SKU list and try again.');

@@ -1,5 +1,15 @@
 const REQUEST_TIMEOUT_MS = 15_000;
 
+function parseErrorMessage(body) {
+  if (!body) return '';
+
+  try {
+    const parsed = JSON.parse(body);
+    return parsed.message || parsed.error || body;
+  } catch {
+    return body;
+  }
+}
 export function normalizePrice(price) {
   const num = parseFloat(String(price));
   if (Number.isNaN(num)) {
@@ -30,10 +40,16 @@ export async function fetchItemBySku(sku) {
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
+      const message = parseErrorMessage(body) || response.statusText;
+      const notFound =
+        response.status === 404 ||
+        /unable to find item matching provided/i.test(message);
+
       return {
         ok: false,
         status: response.status,
-        message: body || response.statusText,
+        message,
+        notFound,
       };
     }
 
