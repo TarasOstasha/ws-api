@@ -39,7 +39,7 @@ export async function exportDetails() {
       continue;
     }
 
-    const { itemId, displayName, package: packageName, weight, turnTime } = result.data;
+    const { itemId, displayName, package: packageName, weight, turnTime, available } = result.data;
 
     items.push({
       sku,
@@ -48,10 +48,11 @@ export async function exportDetails() {
       package: packageName,
       weight,
       turnTime,
+      available,
     });
 
     console.log(
-      `[${i + 1}/${skus.length}] [OK] ${sku}: package=${packageName}, weight=${weight}, turnTime=${turnTime || '(empty)'}`
+      `[${i + 1}/${skus.length}] [OK] ${sku}: package=${packageName}, weight=${weight}, turnTime=${turnTime || '(empty)'}, available=${available}`
     );
   }
 

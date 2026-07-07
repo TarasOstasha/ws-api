@@ -74,6 +74,7 @@ export async function writeDetailsReport(items, exportedAt) {
     package: item.package,
     weight: item.weight,
     turnTime: item.turnTime,
+    available: item.available,
   }));
 
   await mkdir(REPORTS_DIR, { recursive: true });

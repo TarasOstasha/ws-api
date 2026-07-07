@@ -69,6 +69,7 @@ export async function fetchItemBySku(sku) {
         package: data.package ?? '',
         weight: data.weight ?? '',
         turnTime: data.turnTime ?? '',
+        available: Boolean(data.available),
       },
     };
   } catch (err) {
