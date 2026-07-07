@@ -64,6 +64,24 @@ export async function writeChangeReport(changes, checkedAt) {
   return reportPath;
 }
 
+export async function writeDetailsReport(items, exportedAt) {
+  const reportPath = await resolveReportPath(exportedAt, 'item-details');
+
+  const rows = items.map((item) => ({
+    sku: item.sku,
+    displayName: item.displayName,
+    itemId: item.itemId,
+    package: item.package,
+    weight: item.weight,
+    turnTime: item.turnTime,
+  }));
+
+  await mkdir(REPORTS_DIR, { recursive: true });
+  await writeCsvReport(reportPath, rows);
+
+  return reportPath;
+}
+
 export async function writeMissingReport(missing, checkedAt) {
   const reportPath = await resolveReportPath(checkedAt, 'missing-items');
 

@@ -4,7 +4,8 @@
   "description": "Daily WS Display API price change checker",
   "type": "module",
   "scripts": {
-    "check": "node src/index.js"
+    "check": "node src/index.js",
+    "export": "node src/exportDetails.js"
   },
   "engines": {
     "node": ">=18"
